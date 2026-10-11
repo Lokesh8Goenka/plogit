@@ -18,22 +18,33 @@ export async function fetchCatalog(): Promise<CatalogItem[]> {
   return catalogCache!;
 }
 
-/** Reads a File into a base64 string (no data: prefix) + its mime type. */
-export function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+/**
+ * Downscales a photo to <= maxDim and re-encodes as JPEG, returning base64.
+ * Keeps uploads well under Vercel's ~4.5MB function body limit and cuts the
+ * tokens/latency of the vision call. Phone photos are far larger than we need
+ * for identification.
+ */
+function resizeForUpload(file: File, maxDim = 1280, quality = 0.85): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => {
-      const result = reader.result as string; // "data:image/jpeg;base64,...."
-      const comma = result.indexOf(",");
-      resolve({ base64: result.slice(comma + 1), mimeType: file.type || "image/jpeg" });
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      resolve({ base64: dataUrl.slice(dataUrl.indexOf(",") + 1), mimeType: "image/jpeg" });
     };
-    reader.readAsDataURL(file);
+    img.src = url;
   });
 }
 
 export async function estimateWaste(file: File): Promise<EstimateResponse> {
-  const { base64, mimeType } = await fileToBase64(file);
+  const { base64, mimeType } = await resizeForUpload(file);
   const res = await fetch("/api/estimate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

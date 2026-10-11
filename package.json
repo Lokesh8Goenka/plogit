@@ -1,0 +1,10 @@
+{
+  "name": "plogit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Root package for Vercel: serves the frontend build + /api serverless functions.",
+  "devDependencies": {
+    "@vercel/node": "^5.0.0"
+  }
+}

@@ -1,9 +1,8 @@
-import { createRequire } from "node:module";
 import type { DictionaryEntry } from "./types.js";
+import entriesJson from "./data/litter-dictionary.json" with { type: "json" };
 
-// JSON import that works under tsx/ESM without import-assertion friction.
-const require = createRequire(import.meta.url);
-const entries = require("./data/litter-dictionary.json") as DictionaryEntry[];
+// Static import so bundlers (Vite/Vercel/esbuild) inline the data.
+const entries = entriesJson as DictionaryEntry[];
 
 const byId = new Map<string, DictionaryEntry>(entries.map((e) => [e.id, e]));
 

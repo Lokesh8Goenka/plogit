@@ -44,12 +44,32 @@ Without the Supabase keys it runs in **guest mode** (localStorage, no login).
 Run [`supabase-schema.sql`](./supabase-schema.sql) in Supabase → SQL Editor.
 Row-Level Security ensures each user only sees their own walks.
 
-## Deployment pipeline (GitHub → Supabase → Vercel)
-- **Supabase**: hosts auth + Postgres. Add `localhost:5173` and the Vercel URL to
-  Auth → URL Configuration. Enable the Google provider.
-- **Vercel**: deploys the frontend. Set env vars `VITE_SUPABASE_URL`,
-  `VITE_SUPABASE_ANON_KEY`, and `GEMINI_API_KEY` (server-side).
-- The Express backend becomes a Vercel serverless function (see deploy notes).
+## Deployment (GitHub → Supabase → Vercel)
+
+The repo deploys as a single Vercel project: the frontend is built to static
+files, and `/api/estimate` + `/api/catalog` run as **serverless functions**
+(they reuse `backend/src` — one source of logic). `vercel.json` configures this.
+
+### Vercel steps
+1. Vercel → **Add New Project** → import `Lokesh8Goenka/plogit`
+2. **Root Directory**: leave as repo root (where `vercel.json` lives)
+3. **Environment Variables** (Project Settings → Environment Variables):
+   | Var | Value | Notes |
+   |-----|-------|-------|
+   | `GEMINI_API_KEY` | your AI Studio key | **server-side only** |
+   | `VITE_SUPABASE_URL` | `https://xxxx.supabase.co` | build-time |
+   | `VITE_SUPABASE_ANON_KEY` | `sb_publishable_...` | build-time, public |
+4. **Deploy**. Note the production URL (e.g. `https://plogit.vercel.app`).
+
+### After the first deploy — point auth at the live URL
+- **Supabase** → Authentication → URL Configuration → add the Vercel URL to
+  **Redirect URLs** (keep `http://localhost:5173` too).
+- **Google Cloud** → Credentials → your OAuth client → add the Vercel URL to
+  **Authorized JavaScript origins**.
+- Redeploy if you changed any `VITE_*` var.
+
+> Images are downscaled client-side before upload, keeping requests under
+> Vercel's ~4.5MB function body limit.
 
 ## Env vars summary
 | Var | Where | Secret? |
